@@ -241,15 +241,10 @@ main {
   color: var(--on-background);
   cursor: pointer;
   display: flex;
-  margin: 0 16px;
 }
 
-.toggle-theme {
-  font-size: 36px;
-}
-
-.toggle-locale {
-  font-size: 28px;
+.toggle-theme, .toggle-locale {
+  font-size: 30px;
 }
 
 .input-login,

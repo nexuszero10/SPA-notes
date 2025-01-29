@@ -1,70 +1,65 @@
-import React from "react";
-import { useParams, useNavigate} from "react-router-dom";
-import { getNote, deleteNote, archiveNote, unarchiveNote} from "../utils/local-data";
-import { showFormattedDate } from "../utils";
+import React, { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { getNote, deleteNote, archiveNote, unarchiveNote } from "../utils/api";
 import NoteItemDetail from "../components/NoteItemDetail";
 import DeleteButton from "../components/DeleteButton";
 import ArchiveButton from "../components/ArchiveButton";
-import PropTypes from "prop-types";
+import { showFormattedDate } from "../utils";
 
-function DetailPageNoteWrapper(){
+function DetailNotePage() {
     const { id } = useParams();
     const navigate = useNavigate();
-    return <DetailNotePage note_id={id} navigate={navigate}/>
-}
+    const [note, setNote] = useState(null);
 
-class DetailNotePage extends React.Component {
-    constructor(props){
-        super(props);
-
-        this.state = {
-            note: {
-                ...getNote(props.note_id),
-                createdAt: showFormattedDate(getNote(props.note_id).createdAt),
-            }           
-        };
-
-        this.onDeleteHandler = this.onDeleteHandler.bind(this);
-        this.onArchiveHandler = this.onArchiveHandler.bind(this);
-    }
-
-    onDeleteHandler(id) {
-        deleteNote(id);
-        this.props.navigate("/");
-    }
-
-    onArchiveHandler(id){
-        if(this.state.note.archived){
-            unarchiveNote(id);
-            this.props.navigate("/");
-        } else {
-            archiveNote(id);
-            this.props.navigate("/archives");
+    useEffect(() => {
+        async function fetchNoteData() {
+            const { data, error } = await getNote(id);
+            if (!error) {
+                setNote({...data, createdAt: showFormattedDate(data.createdAt)} || null);
+            }
         }
 
-        this.setState(() => {
-            return {
-                note: getNote(id),
-            }
-        })
-    }
+        fetchNoteData();
 
-    render(){
-        return (
-            <section className="detail-page">
-                <NoteItemDetail {...this.state.note}/>
-                <div className="detail-page__action">
-                    <ArchiveButton id={this.state.note.id} archived={this.state.note.archived} onArchive={this.onArchiveHandler}/>
-                    <DeleteButton id={this.state.note.id} onDelete={this.onDeleteHandler}/>
-                </div>
-            </section>
-        );
-    }
+        return () => {
+            setNote(null);
+        };
+    }, [id]);
+
+    const onDeleteHandler = async (noteId) => {
+        await deleteNote(noteId);
+        navigate("/");
+    };
+
+    const onArchiveHandler = async (noteId) => {
+        if (note.archived) {
+            await unarchiveNote(noteId);
+            navigate("/");
+        } else {
+            await archiveNote(noteId);
+            navigate("/archives");
+        }
+    };
+
+    return (
+        <section className="detail-page">
+            {!note ? (
+                <p>Loading...</p>
+            ) : (
+                <>
+                    <NoteItemDetail {...note} />
+                    <div className="detail-page__action">
+                        <ArchiveButton
+                            id={note.id}
+                            archived={note.archived}
+                            onArchive={onArchiveHandler}
+                        />
+                        <DeleteButton id={note.id} onDelete={onDeleteHandler} />
+                    </div>
+                </>
+            )}
+        </section>
+    );
 }
 
-DetailNotePage.propTypes = {
-    note_id: PropTypes.string.isRequired,
-    navigate: PropTypes.func.isRequired,
-}
-
-export default DetailPageNoteWrapper ;
+export default DetailNotePage;

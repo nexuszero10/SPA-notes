@@ -86,7 +86,6 @@
       if (note.id === id) {
         return { ...note, archived: false };
       }
-
       return note;
     });
   }

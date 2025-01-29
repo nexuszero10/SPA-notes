@@ -1,71 +1,64 @@
 import React from "react";
 import { useSearchParams } from "react-router-dom";
-import { getActiveNotes } from "../utils/local-data";
+import { getActiveNotes } from "../utils/api";
 import { showFormattedDate } from "../utils";
-import PropTypes, { string } from "prop-types";
 import SearchBar from "../components/SearchBar";
 import NoteList from "../components/NoteList";
 import AddButton from "../components/AddButton";
+import LanguageContext from "../context/LanguageContext";
 
-function HomePageWrapper(){
-    const [searchParams, setSearchParams] =  useSearchParams();
-    const keyword = searchParams.get('keyword');
+function HomePage() {
+    const [searchParams, setSearchParams] = useSearchParams();
+    const [notes, setNotes] = React.useState([]);
+    const [keyword, setKeyword] = React.useState(() => searchParams.get('keyword') || "");
+    const [loading, setLoading] = React.useState(true);
+    const { language } = React.useContext(LanguageContext);
 
-    function changeSearchParams(keyword){
-        setSearchParams({keyword});
-    }
-
-    return <Homepage defaultKeyword={keyword} keywordChange={changeSearchParams}/>
-}
-
-class Homepage extends React.Component {
-    constructor(props){
-        super(props);
-
-        this.state = {
-            notes: getActiveNotes().map((note) => {
-                return {
+    React.useEffect(() => {
+        const fetchNotes = async () => {
+            const { data } = await getActiveNotes();
+            setNotes(
+                data.map(note => ({
                     ...note,
-                    createdAt: showFormattedDate(note.createdAt)
-                };
-            }),
-            keyword: props.defaultKeyword || '',
-        }
-
-        this.onKeywordChangeHandler = this.onKeywordChangeHandler.bind(this);
-    }
-
-    onKeywordChangeHandler(keyword){
-        this.setState(() => {
-            return {
-                keyword, 
-            }
-        });
-
-        this.props.keywordChange(keyword);
-    }
-
-    render(){
-        const notes = this.state.notes.filter((note) => {
-            return note.title.toLowerCase().includes(
-                this.state.keyword.toLowerCase()
+                    createdAt: showFormattedDate(note.createdAt),
+                }))
             );
-        });
+            setLoading(false);
+        };
 
-        return (
-            <section className="homepage">
-                <h2>Catatan Aktif</h2>
-                <SearchBar keyword={this.state.keyword} keywordChange={this.onKeywordChangeHandler}/>
-                <NoteList notes={notes}/>
-                <AddButton />
-            </section>
-        )
+        fetchNotes();
+
+        return () => {
+            setNotes([]);
+            setLoading(true);
+        }
+    }, []);
+
+    function onKeywordChangeHandler(keyword) {
+        setKeyword(keyword);
+        setSearchParams({ keyword });
     }
+
+    const filteredNotes = notes.filter((note) => {
+        return note.title.toLowerCase().includes(keyword.toLowerCase());
+    });
+
+    return (
+        <section className="homepage">
+            <h2>{language === 'id' ? 'Catatan Aktif' : 'Active Notes'}</h2>
+            <SearchBar keyword={keyword} keywordChange={onKeywordChangeHandler} />
+            {loading ? (
+                <p>{language === 'id' ? 'Mengambil catatan aktif' : 'Fetching Active Notes...'}</p>
+            ) : notes.length === 0 ? (
+                <p>{language === 'id' ? 'Tidak ada catatan aktif' : 'No active notes'}</p>
+            ) : filteredNotes.length > 0 ? (
+                <NoteList notes={filteredNotes} />
+            ) : (
+                <p>{language === 'id' ? 'Tidak ada catatan yang sesuai' : 'No matching notes found'}</p>
+            )}
+            <AddButton />
+        </section>
+    );
 }
 
-Homepage.proptypes = {
-    defaultKeyword: PropTypes.string,
-    keywordChange: PropTypes.func.isRequired,
-}
-
-export default HomePageWrapper ;
+export default HomePage;
